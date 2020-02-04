@@ -1,6 +1,18 @@
 
 ## Jan 28th
 
+Webpages
+```
+Samtools: http://biobits.org/samtools_primer.html
+Pysam: https://pysam.readthedocs.io/en/latest/api.html
+Pandas: https://pandas.pydata.org/pandas-docs/stable/getting_started/10min.html
+```
+
+Git configuration
+```bash
+git config --list
+```
+
 Location of breakpoint files
 ```
 /recombinant-reads/data/references/liu-data-reference/all_break_points.txt
