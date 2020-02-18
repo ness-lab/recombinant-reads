@@ -39,3 +39,34 @@ Open alignment file with pysam
 ```python
 pysam.AlignmentFile(filepath, 'rb')
 ```
+
+## February 10th
+
+[tmux cheat sheet](https://tmuxcheatsheet.com/)
+
+[cyvcf2 documentation](https://brentp.github.io/cyvcf2/)
+
+## February 18th
+
+How to run jupyter notebook locally by tunneling into the hpcnode1 server:
+
+Sign into the server and run jupyter notebook, make note of the port and token
+```bash
+ssh liujiyu@hpcnode1.utm.utoronto.ca
+tmux attach
+jupyter notebook
+```
+
+Then locally:
+```bash
+ssh -N -f -L localhost:8888:localhost:[port] liujiyu@hpcnode1.utm.utoronto.ca
+```
+
+Then go to the webpage:
+```
+localhost:8000/tree
+```
+
+Copy the token from the server to authenticate yourself
+
+
