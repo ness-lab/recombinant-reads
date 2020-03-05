@@ -1,5 +1,5 @@
 
-## Jan 28th
+# January 28th
 
 Webpages
 ```
@@ -40,13 +40,13 @@ Open alignment file with pysam
 pysam.AlignmentFile(filepath, 'rb')
 ```
 
-## February 10th
+# February 10th
 
 [tmux cheat sheet](https://tmuxcheatsheet.com/)
 
 [cyvcf2 documentation](https://brentp.github.io/cyvcf2/)
 
-## February 18th
+# February 18th
 
 How to run jupyter notebook locally by tunneling into the hpcnode1 server:
 
@@ -59,7 +59,7 @@ jupyter notebook
 
 Then locally:
 ```bash
-ssh -N -f -L localhost:[local port]:localhost:[port] liujiyu@hpcnode1.utm.utoronto.ca
+ssh -N -f -L localhost:[local_port]:localhost:[port] liujiyu@hpcnode1.utm.utoronto.ca
 ```
 
 Note, if you are using a public wifi like UTM wifi, set your local port
@@ -81,7 +81,7 @@ For the example data, we only care about variants in cross H. The file is:
 Wvcf_files_path + 'H.vcf.gz'
 ```
 
-## February 24th
+# February 24th
 
 When writing a bam file, if you want to transfer over the the header from another pysam alignment file, make sure to also include mode 'h'
 
@@ -113,3 +113,25 @@ def recomb_percentage(bam_file_obj):
 [SAM format](https://samtools.github.io/hts-specs/SAMv1.pdf)
 
 [pysam documentation](https://pysam.readthedocs.io/en/latest/api.html)
+
+Issues encountered:
+- The VCF has two or more alternate alleles, not sure what that means
+- For variants, just assuming that one parent is reference and other is alternate
+- For records in bam file some don't have reference_end attribute, not sure what that means
+- Not matching to either reference or alternate allele
+
+# February 25th
+
+REF is the reference string, not the actual lineages, use gt_bases to get the bases of the lineages.
+
+For gaps and stuff look at cigar string so we can line up the query and the SNPs.
+
+Write function to check how many SNPs each breakpoint has that's based on the mock breakpoint function
+
+# March 5th
+
+Did some fixing of the code and some SNP analysis. The results are in SNP_10k.txt which is where the SNP frequency per 10,000 bases was found; SNP_breakpoint.txt is the SNP frequency for the breakpoints that were provided. This file is alot shorter than all_breakpoints.txt because this only looked at SNPs on chromosome 1.
+
+Analyzing the number of SNPs, it's quite low (< 2) for a lot of the breakpoints. Also for making the mock recombination, if the left bound and right bound are not in positions with lots of reads, the file may not be as long as we would like (200 per file). So I've pushed the bounds out of the breakpoints a bit which increases the reads but not by much.
+
+The algorithm now uses gt_bases instead of REF and ALT which was wrong, but the recomb detection is far from perfect. All the recombinations should be at the start of the file but they are spread through the whole file and there are more mis-matches than recombinations. So the simplified algorithm still needs lots of work.
