@@ -132,6 +132,48 @@ Write function to check how many SNPs each breakpoint has that's based on the mo
 
 Did some fixing of the code and some SNP analysis. The results are in SNP_10k.txt which is where the SNP frequency per 10,000 bases was found; SNP_breakpoint.txt is the SNP frequency for the breakpoints that were provided. This file is alot shorter than all_breakpoints.txt because this only looked at SNPs on chromosome 1.
 
-Analyzing the number of SNPs, it's quite low (< 2) for a lot of the breakpoints. Also for making the mock recombination, if the left bound and right bound are not in positions with lots of reads, the file may not be as long as we would like (200 per file). So I've pushed the bounds out of the breakpoints a bit which increases the reads but not by much.
+Analyzing the number of SNPs, it's quite low (< 2) for a lot of the breakpoints. Also for making the mock recombination, if the left bound and right bound are not in positions with lots of reads, the file may not be as long as we would like (200 per file, 2000 in total for 10 files). So I've pushed the bounds out of the breakpoints a bit which increases the reads but not by much.
 
 The algorithm now uses gt_bases instead of REF and ALT which was wrong, but the recomb detection is far from perfect. All the recombinations should be at the start of the file but they are spread through the whole file and there are more mis-matches than recombinations. So the simplified algorithm still needs lots of work.
+
+# March 10th
+
+To find samples, run VCF(fname).samples
+
+When the gt_bases is [T/T, G/G], it means that one allele is T and the other allele is T for the first sample and so on.
+You can check uniqueness of the elements using a set.
+
+record.query_alignment_qualities to get the array of qualities
+
+record.cigartuples to get the array of tuples of alignment
+
+Use SeqIO and print out 50 from reference and 50 from sample from a suspect sequence, and see if they are aligned
+
+# March 17th
+
+[UTM wiki](https://wiki.utm.utoronto.ca/display/WF/Wiki+FAQ)
+
+# March 31st
+
+Ask Ahmed where is the bam document with the reference sequence.
+
+- Fasta file where that is, use SeqIO to parse the reference sequence
+
+Working on cigar tuples
+
+# April 14th
+
+Created a diagnosis bam file with just sequences with no matches
+
+There seems to be some problems with hard clipping and soft clipping that have to be fixed
+
+VCF SNPs seems to be 0-based indexing while bam seems to be 1-based indexed, have to be careful when interacting the both of them
+
+- This seems to be more complicated than I thought, something weird with the indexing will have to look into this later
+
+record below refers to bam records in a bam file alignment object:
+
+- Soft-clipping: record.query_sequence includes the part that soft clips with the sequence (the [(4, x), ...] section)
+
+- Hard-clipping record.query_sequence does not include the part that hard clips with the sequence
+
