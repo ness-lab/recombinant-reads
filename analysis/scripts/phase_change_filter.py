@@ -8,6 +8,7 @@ usage:
             --out output.bam
 '''
 
+import os
 import argparse
 import pysam
 from cyvcf2 import VCF
@@ -16,28 +17,33 @@ from Bio import SeqIO
 
 def args():
     parser = argparse.ArgumentParser(
-        description='', 
+        description='filter BAM for reads containing phase changes', 
         usage='python3.5 phase_change_filter.py [options]')
 
     parser.add_argument('-f', '--filename', required=True,
                         type=str, help='BAM to filter')
     parser.add_argument('-v', '--vcf', required=True,
                         type=str, help='VCF containing parents')
+    parser.add_argument('-l', '--log', required=False,
+                        type=str, help='Log metrics to provided filename')
     parser.add_argument('-o', '--out', required=True,
                         type=str, help='File to write to')
 
     args = parser.parse_args()
 
-    return args.filename, args.vcf, args.out
+    return args.filename, args.vcf, args.log, args.out
 
-def check_snps(vcf, chromosome, left_bound, right_bound):
-    vcf_in = VCF(vcf)
-    region = '{c}:{l}-{r}'.format(c=chromosome, l=left_bound, r=right_bound)
+def check_snps(f_name, chromosome, left_bound, right_bound):
+    vcf_in = VCF(f_name)
+    # 1 is added to record.reference_start and the following parameter because vcf is 1 indexed
+    # in order to keep code consistent
+    region = '{c}:{l}-{r}'.format(c=chromosome, l=left_bound+1, r=right_bound+1)
     records = [rec for rec in vcf_in(region)]
     return records
 
 
 def parse_cigar(cigar_tuples, query_sequence):
+    # TODO: improve cigar parsing
     segment = ''
 
     # if read is clean 150 matches:
@@ -76,6 +82,7 @@ def parse_phase_changes(snps, cigar_tuples, segment, record):
     no_match_flag = False
     phase_change_flag = False
     previous_strand = None
+    snp_lst = []
     
     for snp in snps:
         start = snp.start - record.reference_start # snp.start is 0-based
@@ -102,25 +109,23 @@ def parse_phase_changes(snps, cigar_tuples, segment, record):
             break
         
         if segment[start] == strand1:
-            
-            # phase change detection
-            if previous_strand == 'strand2':
-                phase_change_flag = True
-            previous_strand = 'strand1'
-            
+            snp_lst[start] = '1'
         elif segment[start] == strand2:
-            
-            if previous_strand == 'strand1':
-                phase_change_flag = True
-            previous_strand = 'strand2'
+            snp_lst[start] = '2'
         else:
-            no_match_flag = True
+            snp_lst[start] = 'N'
+            
+    snp_str = ''.join(snp_lst)
+    if '1' in snp_str and '2' in snp_str:
+        phase_change_flag = True
+    if 'N' in snp_str:
+        no_match_flag = True
             
     return phase_change_flag, no_match_flag
 
 
 def main():
-    bam, vcf, out = args()
+    bam, vcf, log, out = args()
 
     with open(out, 'w') as f_out:
         bam_file_obj = pysam.AlignmentFile(bam, 'r')
@@ -156,15 +161,31 @@ def main():
                 no_match_reads += 1
             if phase_change_flag and no_match_flag:
                 no_match_phase_change_reads += 1
-    print('''
-    Done.
-    {} phase change reads extracted from {} total ({}%)
-    {} reads had no-match variants, and {} of these were phase-change reads.
-    {} reads did not have enough SNPs (>= 2) to call ({}%)
-    '''.format(phase_change_reads, total_reads, phase_change_reads /
-        total_reads, no_match_reads, no_match_phase_change_reads, no_snp_reads,
-        no_snp_reads / total_reads))
-        
+
+    if not log:
+        print('''
+        Done.
+        {} phase change reads extracted from {} total ({}%)
+        {} reads had no-match variants, and {} of these were phase-change reads.
+        {} reads did not have enough SNPs (>= 2) to call ({}%)
+        '''.format(phase_change_reads, total_reads, phase_change_reads /
+            total_reads, no_match_reads, no_match_phase_change_reads, no_snp_reads,
+            no_snp_reads / total_reads))
+    elif log:
+        needs_header = True
+        if os.path.isfile(log):
+            needs_header = False
+        with open(log, 'a') as f:
+            if needs_header:
+                fieldnames = ['phase_change_reads', 'total_reads',
+                'no_match_reads', 'no_match_phase_change_reads',
+                'no_snp_reads']
+                out_values = [phase_change_reads, total_reads, no_match_reads,
+                        no_match_phase_change_reads, no_snp_reads]
+                f.write(','.join(fieldnames) + '\n')
+                f.write(','.join([str(n) for n in out_values]) + '\n')
+
+
 if __name__ == '__main__':
     main()
 
