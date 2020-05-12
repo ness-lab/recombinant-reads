@@ -54,7 +54,7 @@ Sign into the server and run jupyter notebook, make note of the port and token
 ```bash
 ssh liujiyu@hpcnode1.utm.utoronto.ca
 tmux attach
-jupyter notebook
+jupyter notebook --no-browser
 ```
 
 Then locally:
@@ -177,3 +177,34 @@ record below refers to bam records in a bam file alignment object:
 
 - Hard-clipping record.query_sequence does not include the part that hard clips with the sequence
 
+# April 23
+
+Doing some exploratory work on other breakpoints. There definitely aren't as many SNPs in the other breakpoints so it's a lot harder to find recombinations
+
+Wrote code so that the diagnosis prints no matches in a bam format
+
+Need to try and integrate diagnosis and recomb detection so that you can print all recombinations
+
+Paralogous genes: VCF gt_bases filter out heterozygous calls because we're working with haploid organisms that shouldn't have heterozygous calls
+
+Bug with SNPs: SNP index is the REF index but when you have an insertion the alignment of the ALT is then off because of that so the SNP checking needs to compensate for it
+
+# May 5
+
+VCFs are 1-indexed while bams are 0-indexed. I have decided to change the check_snp() function to add a 1 to the left-bound and right-bound input in order to try and keep the code consistent although extra has to be taken if working more directly with SNPs (using snp.start instead of snp.POS).
+
+Bam reads that are mate pairs have the same read id that you can grab, most likely going to use a dictionary to store these values (cached reads are the most efficient)
+
+# May 12th
+
+Mate pairs are working for the human readable recombination and it has detected a lot more phase changes across the mate pairs. It also allows us to use all of our sequences that only have 1 SNP.
+
+The current algorithm has to run 3 checks to write
+- Check if 1st pair has a PC/NM if 2nd pair doesn't exist
+    - Missing case here where 2nd pair has no snps but that is created afterwards
+- Check if 2nd pair has a PC/NM
+- Check if the two mate pairs combined create a phase change
+
+Want to work on whether we can optimize these 3 checks
+
+Because of new introduction of sequences with only 1 SNP, there are now sequences with deletions (cigar = 2), so need to work on that and checking if the SNPs line up or not.
