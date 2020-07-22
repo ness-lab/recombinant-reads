@@ -203,8 +203,275 @@ The current algorithm has to run 3 checks to write
 - Check if 1st pair has a PC/NM if 2nd pair doesn't exist
     - Missing case here where 2nd pair has no snps but that is created afterwards
 - Check if 2nd pair has a PC/NM
+    - 2nd check can be removed? It can be removed if I always build snp_str
 - Check if the two mate pairs combined create a phase change
 
 Want to work on whether we can optimize these 3 checks
 
 Because of new introduction of sequences with only 1 SNP, there are now sequences with deletions (cigar = 2), so need to work on that and checking if the SNPs line up or not.
+
+Pairwise 2: Python-based aligner
+from Bio import pairwise2
+
+# May 13
+
+Old human readable recombination detection code:
+
+```python
+def human_read_recomb(bam_file_obj, mode='no_match', output_filename='recomb_diagnosis'):
+    '''
+    Given a bam file object, return a human-readable file with aligned reference, quality string, 
+        bam sequence, and SNPs    
+
+    If mode='no_match', create a file with only no_match sequences.
+    If mode='all', create a file with all sequences
+    If mode='phase_change', create a file with only sequences with phase changes
+    
+    Makes assumptions on the following file locations:
+        VCF: vcf_files_path + 'parental_filtered.vcf.gz'
+        Reference: reference_files_path + 'chlamy.5.3.w_organelles_mtMinus.fasta'
+    '''
+    
+    f_obj = open(output_filename + '.txt', 'w')
+
+    f_obj.write('Key: \nSequence: Start - End \nReference sequence \nPhred Scale Quality \nQuery alignment sequence \n')
+    f_obj.write('1: CC2935, 2: CC2936, N: Does not match SNP \n\n')
+    
+    # get reference segment
+    seq_obj = SeqIO.parse(reference_files_path + 'chlamy.5.3.w_organelles_mtMinus.fasta', 'fasta')
+
+    # grab chromosome 1
+    for seq in seq_obj:
+        chrom_1 = seq
+        break    
+        
+    #counters
+    no_match_counter = 0
+    phase_change_counter = 0
+    phase_change_no_match_counter = 0
+    seq_with_snps_counter = 0
+    all_seq_counter = 0
+    
+    for record in bam_file_obj:
+        
+        all_seq_counter += 1
+                    
+        snps = check_snps(vcf_files_path + 'parental_filtered.vcf.gz', record.reference_name, 
+                          record.reference_start,
+                          record.reference_start + record.query_alignment_length)
+        
+        if len(snps) > 1:
+            
+            seq_with_snps_counter += 1
+            
+            # tuple-checking
+            cigar_tuples = record.cigartuples
+            
+            # initialize segment for building
+            segment = ''
+            
+            # reference sequence
+            ref = chrom_1[record.reference_start:record.reference_start + record.query_alignment_length] 
+            
+            # 0 is match and sequences are length of 150, so it's a full match
+            if cigar_tuples == [(0, 150)]:
+                segment = record.query_sequence
+            else:
+                # index to keep track of where we are in the query_segment
+                query_segment = record.query_sequence
+                index = 0
+                
+                for cigar_tuple in cigar_tuples:
+                    # 4 = soft clipping, the record.query_sequence has the portion that is soft clipping
+                    # so we need to skip it with index
+                    if cigar_tuple[0] == 4:
+                        index += cigar_tuple[1]
+                        
+                    # 5 = hard clipping, record.query_sequence does not have the portion that is
+                    # hard clipping so we don't skip it and we don't add anything
+                    elif cigar_tuple[0] == 5:
+                        continue
+                    
+                    # if it is a match(0), then just add it onto the segment 
+                    elif cigar_tuple[0] == 0:
+                        segment += query_segment[index:index+cigar_tuple[1]]
+                        index += cigar_tuple[1]
+                    
+                    # 1 is an insertion, we will add gaps to the reference
+                    elif cigar_tuple[0] == 1:
+                        segment += query_segment[index:index+cigar_tuple[1]]
+                        index += cigar_tuple[1]
+                        
+                        ref = ref[:index] + '-' * cigar_tuple[1] + ref[index:]
+                        
+                    else:
+                        print('oops forgot to consider this: ' + str(cigar_tuple))
+                        print(cigar_tuples)
+            
+            snp_lst = [' '] * record.query_alignment_length
+            
+            for snp in snps:
+                # Using SNP.start and record.reference_start since they are both 0 based
+                # SNP.start grabs vcf positions in 0 index while vcfs are 1 indexed
+                
+                start = snp.start - record.reference_start
+                
+                # extra calculations to realign start if there is an insertion                    
+                current_tuple = 0
+                current_base = 0
+
+                while current_base < start and current_tuple < len(cigar_tuples):
+                    if cigar_tuples[current_tuple][0] == 1:
+                        # shift the start over by the amount of insertion to compensate for it
+                        start += cigar_tuples[current_tuple][1]
+
+                    current_base += cigar_tuples[current_tuple][1]
+                    current_tuple += 1
+                            
+                        
+                
+                # indexing for VCF seems to be a bit weird and will sometimes be -1
+                if start < 0:
+                    raise Exception('VCF indexing is off. Check SNP at {}'.format(snp))
+                
+                strand1 = snp.gt_bases[0][0]
+                strand2 = snp.gt_bases[1][0]
+                
+                if start >= len(segment):
+                    break
+                
+                if segment[start] == strand1:
+                    snp_lst[start] = '1'
+                    
+                elif segment[start] == strand2:
+                    snp_lst[start] = '2'
+                    
+                else:
+                    snp_lst[start] = 'N'
+                    
+            snp_str = ''.join(snp_lst)
+            
+            # qualities string
+            qualities_str = ''
+            for quality in record.query_alignment_qualities:
+                qualities_str += chr(quality + 33)
+            
+            #phase_change_counter update
+            if '1' in snp_str and '2' in snp_str:
+                phase_change_counter += 1
+                
+            #no_match_counter update
+            if 'N' in snp_str:
+                no_match_counter += 1
+                
+            #phase_change_no_match_counter update
+            if '1' in snp_str and '2' in snp_str and 'N' in snp_str:
+                phase_change_no_match_counter += 1            
+            
+            
+            #there is not a no_match and the user only wants no_matches
+            if 'N' not in snp_str and mode == 'no_match':
+                continue
+            
+            #there is not a phase change and the user only wants phase changes
+            elif not ('1' in snp_str and '2' in snp_str) and mode == 'phase_change':
+                continue
+                
+            else:
+                f_obj.write('Sequence: {start} - {end} \n'.format(start=record.reference_start, 
+                                                               end=record.reference_start+record.query_alignment_length))
+
+                f_obj.write(str(cigar_tuples) + '\n')
+
+                f_obj.write(str(ref.seq) + '\n' + qualities_str + '\n' + segment + '\n' + snp_str + '\n \n')
+    
+    # print counters
+    print('Sequences with phase changes: ' + str(phase_change_counter))
+    print('Sequences with a no match: ' + str(no_match_counter))
+    print('Sequences with a phase change and a no match: ' + str(phase_change_no_match_counter))
+    print('Sequences with more than 1 SNP: ' + str(seq_with_snps_counter))
+    print('No. of sequences: ' + str(all_seq_counter))
+```
+
+# May 17th
+
+Ran into situation where record.cigartuples = None. The documentation says this is None when the alignment is not present. Made a check for it in both the phase_change function and the human_cigar function
+
+# May 21st
+
+The [MAF](http://genome.ucsc.edu/FAQ/FAQformat#format5) format is quite similar to the custom one I built for human readable, so it would be good to implement my human readable in that form
+
+# May 25th
+
+I've kind of come to realize that the cigar rebuilding is really useful for displaying a human readable recomb but it doesn't have to be as complicated for bams. Going to rewrite it so that we don't have to recompensate for insertions and deletions in phase_change
+
+Bash command I've been using to test inside recomb folder
+
+```bash
+python3 phase_change_filter.py -f ../tests/mock_sams/mock_1.sam -v ../tests/parental_filtered.vcf.gz -o recomb_diagnosis
+```
+
+VCF Files
+- AC = 2, AF = AC / AN, AN = 4
+- For info, reference is 0 and alternate is 1
+- GT is whether it's REF or ALT, there's 0/0 or 1/1 because we're pretending that the haploid specimen is a diploid
+- Set GQ to 99, max quality
+- AD the number of each, just set to 100, 0 or 50, 50 doesn't matter
+- DP is the sum of the two numbers at AD
+- PL phred scale likelihood - just don't do this
+- Format defines the format of the info that comes after
+
+# June 4th
+- Test for soft clipping and hard clipping
+- Insertions and deletions
+- Test for 250 length reads
+- Unaligned reads: about 1% just don't match and are encoded in the bams
+     - It is in bit 4 that shows it is unaligned
+
+# June 17th
+- Fixed problem with deletions where it continued indexing while adding gaps
+- Apparently for soft clipping the reference start is where the matching starts
+- I have chosen to make mock_sequence 1-based sequencing because VCFs are 1-based indexed so it makes it easier to work with
+- Still need to do all the argument stuff with human readable phase change
+- Fixed bugs with recombinant reads
+
+# June 18th
+- Change function names for human readable version for organization
+- Change sequences to mock_sequence functions
+- Use setattr() for the mock_create
+
+# June 23rd
+- Change paired reads to read pairs to be more clear on what the variable means
+- Change reference_files_path so it's not global 
+- Make reference required
+
+# July 2nd
+- Add more verbosity to stuff that takes a long time like cachepairs
+- It seems that there is name repeating, check if it happens over chromosomes
+- Add argument so that chromosome is an arguement
+- Add this check to cache pairs
+```python
+if not read.is_proper_pair or read.is_secondary or read.is_supplementary:
+    continue
+```
+
+# July 9th
+- Maybe recreating the VCF everytime we run check_snps is slow? Find some way to pass around a generator
+    - Watch out if reads might get eaten (they're not eaten on initial testing)
+- Also create something to check if interval exists, don't know how right now
+
+# July 16th
+- Work on implementing pypy
+- To install pip with pypy run these commands
+```bash
+wget https://bootstrap.pypa.io/get-pip.py
+pypy3 get-pip.py
+```
+- Pypy does not work well with programs that use C, unable to pip instally either pysam or cyvcf2
+
+# July 21st
+- Working on multiprocessing vs multithreading, threading is good with programs with heavy I/O while processing is good with programs with heavy CPU load
+- Was hoping to be able to use module `concurrent.futures` but pysam objects can't be pickled so we may have to run threads then write to separate files
+- [SO page](https://stackoverflow.com/questions/18114285/what-are-the-differences-between-the-threading-and-multiprocessing-modules) about multi-threading vs multi-processing
+- Did some performance analysis using cProfile and it seems that 85% of our performance load is cyvcf2 grabbing reads
+- Used this [webpage](https://julien.danjou.info/guide-to-python-profiling-cprofile-concrete-case-carbonara/#:~:text=Profiling%20a%20Python%20program%20is,area%20might%20be%20worth%20optimizing.) to find out what we needed
