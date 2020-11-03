@@ -475,3 +475,93 @@ pypy3 get-pip.py
 - [SO page](https://stackoverflow.com/questions/18114285/what-are-the-differences-between-the-threading-and-multiprocessing-modules) about multi-threading vs multi-processing
 - Did some performance analysis using cProfile and it seems that 85% of our performance load is cyvcf2 grabbing reads
 - Used this [webpage](https://julien.danjou.info/guide-to-python-profiling-cprofile-concrete-case-carbonara/#:~:text=Profiling%20a%20Python%20program%20is,area%20might%20be%20worth%20optimizing.) to find out what we needed
+
+# July 26th
+- Using a mutable object and an index to pass through each thread in order to manipulate it without having to pass information back and forth: [SO page](https://stackoverflow.com/questions/6893968/how-to-get-the-return-value-from-a-thread-in-python)
+    - Kind of confusing having a list of dictionaries of tuples of pysam records, gotta remember to write this in documentation
+- Using itertools to split the dictionary of pairs in a kind of confusing but concise way: [SO page](https://stackoverflow.com/questions/12988351/split-a-dictionary-in-half)
+
+# July 28th
+- Consider what happens when `split_index` is 0 `if len(pairs) < arg["threads"]`
+- Update documentation
+
+# August 6th
+- Fix bug on line 354, writes pair 0 twice instead of 0 and 1
+- Remove sam extension at the end when outputting a file
+- Add exception to cache reads if a read shows up 3 times
+
+# August 11th
+- Check for is_proper_pair when the sequence is_paired
+- If there is a phase_change in one of the read but it's not a proper_pair should we include the one read
+- Filter out snps where parent1 == parent2
+
+# August 18th
+- Insertions causing an offset by 1? Look into it to see what's actually happening (Ahmed is looking at this)
+- Note on alignment: if there is an insertion and new mutation from no where, it is likely a misalignment issue
+    - Not really applicable to the code, but worthy of note nonetheless
+- Quality of reads filtering, shouldn't be in main script
+- Argparse: action='store_true' or action='store_false' for whether or not we include improper pairs or not
+- Update output so they no longer give percentages because they cause some annoying divide by zero errors
+
+# August 20th
+- Insertions weren't an issue, just some problems with the testing code by Ahmed
+- Currently when you filter out non-proper reads, there are still some unpaired reads, gotta investigate this
+
+# August 26th - Lab Meeting
+- Filtering VCF pre-readcomb to catch weird SNPs
+- It seems a lot of trouble comes from quality of alignment
+- Hard filter on not looking at SNPs near indel?
+- Unpaired reads could be signs of some bigger issue in the gene structure
+- Create subprocess of vcftools that filters vcfs depending on the arguements
+- scikit allele packaging data for compact storage of recombinantions
+
+# August 27th
+- Look into multiprocessing over multithreading
+- Indel polymorphism detection in addition to SNPs
+
+# September 2nd
+- You might have one parent be AT and the other be ATAT and thus they might be both be correct
+- For simple insertions and deletions in which either the REF or one of the ALT alleles would otherwise be null/empty, the REF and ALT Strings must include the base before the event (which must be reflected in the POS field)
+    - I believe this is why we're getting errors with VCF indexing
+
+# September 8th
+- Weird anomaly where one of the bases is ./.
+- sometimes snps are lining up with deletions
+    - Nevermind that's just pre filtering
+
+# September 10th
+- Readable, add parent1 and parent2 sequences and align
+- Insertions in readable use index and soft cliipping seems to be misalign it
+    - Look at weird_read.sam
+
+# September 14th
+- Looked into weird_read.sam, found that we weren't compensating for soft clipping correctly in phase_change_readable
+    - We need a separate ref_id to keep track of where we are on the reference because soft cliped parts isn't included when we retrieve reference by `chrom_1[record.reference_start:record.reference_start + record.query_alignment_length]` where before I assumed that it was
+    - Also, soft clipped and hard clipped parts aren't considered when we're doing extra calculations for recompensating for insertions during phase change detection
+- Surprisingly, adding a ref_id makes the cigar parsing sequence more intuitive because it more closely matches how BAM files consider insertions and deletions through whether each sequence is iterated through shown on the sam specification table
+- Still got a no match in this sequence inside of an insertion so gotta look into that
+- Not sure about the parent1 parent2 thing, it can either be based off of the reference or the segment I don't know which one will be more useful
+
+# September 15th
+- Do we need to readjust for deletions after we adjusted the cigar algorithm?
+- Rebuilt cigar_human so that it is closer to sam specifications
+- Do this after phase detection
+
+# September 23rd
+- Some weird stuff happening with parent 1 and parent 2 alignment, gotta look into it'
+
+# October 7th
+- Looking into multiprocessing, could use some shared memory but the buffer system is kind of weird and Python recommends not to share memory space
+- We could create classes for bam objects in order to pass them around
+- There could be a very clean implementation if we don't consider pairs
+    - Gotta have Ahmed look into if pairs are actually giving us good results
+
+# October 8th
+- Bam files, organize them in a way where reads are right after each other
+    - Samtools sort by name?
+
+# November 3rd
+- Logging support
+- Documentation
+- VCF suppression
+- Smarter iteration counter
