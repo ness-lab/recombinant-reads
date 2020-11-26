@@ -565,3 +565,20 @@ pypy3 get-pip.py
 - Documentation
 - VCF suppression
 - Smarter iteration counter
+
+# November 5th
+- Improve phase change algorithm
+- tqdm bars for each process
+
+# November 24th
+- SNP/phase change density
+    - Usable variants on x, phase change reads on y
+- Recombination classification
+
+# November 26th
+- Make histogram of number of reads in each bam sequence
+    - Full bam / filtered reads comparison
+- Downstream script
+    - Chlamydomonas median NCO-GC length: 73, average: 40-50, use 100 bp where the distribution tapers off
+    - Create read objects that proces on initiation and can call to give information
+    - 
