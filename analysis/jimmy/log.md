@@ -576,9 +576,19 @@ pypy3 get-pip.py
 - Recombination classification
 
 # November 26th
-- Make histogram of number of reads in each bam sequence
+- Make histogram of number of variants in each bam sequence
     - Full bam / filtered reads comparison
 - Downstream script
     - Chlamydomonas median NCO-GC length: 73, average: 40-50, use 100 bp where the distribution tapers off
     - Create read objects that proces on initiation and can call to give information
-    - 
+
+# December 2nd
+- Histogram of number of variants in each bam PAIR
+
+# December 8th
+- Change name check in scheduler of filter.py to use query_name instead of reference_name; reference_name refers to the chromosome
+- Change order of parents in phase_change so that they differ when the length of indels of parent 2 is longer
+- Change the variable snp to variant in phase_change to be more accurate in terminology
+
+# December 9th
+- [Regex tester](https://regex101.com/)
