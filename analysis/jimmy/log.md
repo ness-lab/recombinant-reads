@@ -592,3 +592,16 @@ pypy3 get-pip.py
 
 # December 9th
 - [Regex tester](https://regex101.com/)
+
+# December 10th
+- Change strand to haplpotype/parent
+- Fix issue with indexing pairs
+- Extend ranges to the end of the reads
+- Use length of list instead of regex for CO/NCO identification
+
+# December 15th
+- Masking - Ahmed is asking Rob
+- 2121/1212 - complex classification
+- You can't have crossovers next to each other - crossover interference
+- SDSA - gene conversion
+- [Super intense phase change link](https://www.nature.com/articles/nrm2008)

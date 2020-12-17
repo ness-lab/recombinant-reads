@@ -142,30 +142,30 @@ def downstream_phase_detection(variants, segment, record):
 
             if len(parent1) > len(parent2):
                 if parent1_match:
-                    detection_results.append(('1', idx))
+                    detection_results.append(('1', variant.start))
                 elif parent2_match:
-                    detection_results.append(('2', idx))
+                    detection_results.append(('2', variant.start))
                 else:
-                    detection_results.append(('N', idx))
+                    detection_results.append(('N', variant.start))
             else:
                 if parent2_match:
-                    detection_results.append(('2', idx))
+                    detection_results.append(('2', variant.start))
                 elif parent1_match:
-                    detection_results.append(('1', idx))
+                    detection_results.append(('1', variant.start))
                 else:
-                    detection_results.append(('N', idx))
+                    detection_results.append(('N', variant.start))
         else:
             if idx >= len(segment):
                 break
 
             if segment[idx] == parent1:
-                detection_results.append(('1', idx))
+                detection_results.append(('1', variant.start))
 
             elif segment[idx] == parent2:
-                detection_results.append(('2', idx))
+                detection_results.append(('2', variant.start))
 
             else:
-                detection_results.append(('N', idx))
+                detection_results.append(('N', variant.start))
     
     return detection_results
 
@@ -187,7 +187,7 @@ class Pair():
 
     def call(self, vcf=None):
         '''
-        Takes in optional vcf arguement to take in a VCF object for use in multiprocessing/threading
+        Takes in optional vcf arguement to take in a cyvcf2.VCF object for use in multiprocessing/threading
         - Do not use the same VCF object across threads/processes
         '''
         self.segment_1 = cigar(self.rec_1)
@@ -207,44 +207,48 @@ class Pair():
         self.detection_2 = downstream_phase_detection(self.variants_2, self.segment_2, self.rec_2)
 
         # simplification of results
-        prev_strand = None
-        prev_location = None
-        begin_idx = None
+        # [(haplotype, beginning, end), ...]
         self.simplify = []
-        for variant in self.detection_1 + self.detection_2:
-            strand = variant[0]
-            location = variant[1]
-            # first variant
-            if begin_idx == None:
-                begin_idx = location
-                prev_strand = strand
-                prev_location = location
-            # strand change
-            if strand != prev_strand:
-                self.simplify.append((prev_strand, begin_idx, location))
-                begin_idx = location
 
-            prev_strand = strand
-            prev_location = location
-        
-        # last variant
-        self.simplify.append((prev_strand, begin_idx, location))
+        for variant in self.detection_1 + self.detection_2:
+            haplotype = variant[0]
+            location = variant[1]
+
+            # first variant
+            if len(self.simplify) == 0:
+                self.simplify.append([haplotype, self.rec_1.reference_start, None])
+            
+            # different haplotype
+            if self.simplify[-1][0] != haplotype:
+                self.simplify[-1][2] = location
+                self.simplify.append([haplotype, location, None]) 
+            
+            # last variant
+            if len(self.detection_2) == 0:
+                if variant == self.detection_1[-1]:
+                    self.simplify[-1][2] = self.rec_1.reference_start + self.rec_1.query_alignment_length
+            else:
+                if variant == self.detection_2[-1]:
+                    self.simplify[-1][2] = self.rec_2.reference_start + self.rec_2.query_alignment_length
+
         
         # classification
-        strands = [tupl[0] for tupl in self.simplify]
+        haplotypes = [tupl[0] for tupl in self.simplify]
         ranges = [(tupl[1], tupl[2]) for tupl in self.simplify]
 
         cross_over = r'(12)|(21)'
         gene_conversion = r'(12+1)|(21+2)'
 
-        if 'N' in strands:
+        if 'N' in haplotypes:
             self.classify = 'no_match'
-        elif re.match(cross_over, ''.join(strands)):
+        elif len(haplotypes) == 2:
             self.classify = 'cross_over'
-        elif re.match(gene_conversion, ''.join(strands)):
+        elif len(haplotypes) == 3:
             self.classify = 'gene_conversion'
+        elif len(haplotypes) > 3:
+            self.classify = 'complex'
         else:
-            self.classify = 'no_classification'
+            self.classify = 'no_phase_change'
 
 
 
@@ -265,7 +269,7 @@ def pairs_creation(bam_filepath, vcf_filepath):
     return pairs
 
 if __name__ == '__main__':
-    pairs = pairs_creation('readcomb/recomb_diagnosis.sam', 'tests/parental_filtered.vcf.gz')
+    pairs = pairs_creation('analysis/jimmy/recomb_diagnosis.sam', 'analysis/jimmy/filtered_full.vcf.gz')
     
     for pair in pairs[:10]:
         pair.call()
