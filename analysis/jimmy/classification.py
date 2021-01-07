@@ -185,7 +185,7 @@ class Pair():
         
         self.vcf_filepath = vcf_filepath
 
-    def call(self, vcf=None):
+    def call(self, masking=70, vcf=None):
         '''
         Takes in optional vcf arguement to take in a cyvcf2.VCF object for use in multiprocessing/threading
         - Do not use the same VCF object across threads/processes
@@ -231,24 +231,65 @@ class Pair():
                 if variant == self.detection_2[-1]:
                     self.simplify[-1][2] = self.rec_2.reference_start + self.rec_2.query_alignment_length
 
-        
         # classification
         haplotypes = [tupl[0] for tupl in self.simplify]
-        ranges = [(tupl[1], tupl[2]) for tupl in self.simplify]
-
-        cross_over = r'(12)|(21)'
-        gene_conversion = r'(12+1)|(21+2)'
 
         if 'N' in haplotypes:
             self.classify = 'no_match'
         elif len(haplotypes) == 2:
-            self.classify = 'cross_over'
+            self.classify = 'ambiguous_cross_over'
         elif len(haplotypes) == 3:
             self.classify = 'gene_conversion'
         elif len(haplotypes) > 3:
             self.classify = 'complex'
         else:
             self.classify = 'no_phase_change'
+
+        
+        if self.rec_2.reference_start + self.rec_2.query_alignment_length \
+            - self.rec_1.reference_start < masking * 2:
+
+            print('Masking size too large for pair: ' + self.rec_1.query_name)
+            self.masked_simplify = None
+            self.masked_classify = None
+            return
+
+        mask_start = self.rec_1.reference_start + masking
+        mask_end = self.rec_2.reference_start + self.rec_2.query_alignment_length - masking
+
+        # [(haplotype, beginning, end), ...]
+        self.masked_simplify = []
+
+        for phase in self.simplify:
+            # one phase contains both mask start and end
+            if phase[1] < mask_start and mask_end < phase[2]:
+                self.masked_simplify.append((phase[0], mask_start, mask_end))
+            # phase contains only mask start
+            elif phase[1] < mask_start and mask_start < phase[2]:
+                self.masked_simplify.append((phase[0], mask_start, phase[2]))
+            # phase contains only mask end
+            elif phase[1] < mask_end and mask_end < phase[2]:
+                self.masked_simplify.append((phase[0], phase[1], mask_end))
+            # phase is in the middle
+            elif mask_start < phase[1] and phase[2] < mask_end:
+                self.masked_simplify.append(phase)
+                     
+
+        # masked classification
+        haplotypes = [tupl[0] for tupl in self.masked_simplify]
+
+        if 'N' in haplotypes:
+            self.masked_classify = 'no_match'
+        elif len(haplotypes) == 2:
+            self.masked_classify = 'unambiguous_cross_over'
+        elif len(haplotypes) == 3:
+            self.masked_classify = 'gene_conversion'
+        elif len(haplotypes) > 3:
+            self.masked_classify = 'complex'
+        else:
+            self.masked_classify = 'no_phase_change'
+                
+
 
 
 
@@ -271,9 +312,10 @@ def pairs_creation(bam_filepath, vcf_filepath):
 if __name__ == '__main__':
     pairs = pairs_creation('analysis/jimmy/recomb_diagnosis.sam', 'analysis/jimmy/filtered_full.vcf.gz')
     
-    for pair in pairs[:10]:
+    for pair in pairs[200000:200010]:
         pair.call()
         print(pair.simplify)
-        print(pair.classify)
+        print(pair.masked_simplify)
+        print('-----------------------')
 
     

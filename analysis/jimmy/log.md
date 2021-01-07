@@ -605,3 +605,19 @@ pypy3 get-pip.py
 - You can't have crossovers next to each other - crossover interference
 - SDSA - gene conversion
 - [Super intense phase change link](https://www.nature.com/articles/nrm2008)
+
+# December 18th
+- ambiguous/unambiguous crossovers
+- different masking sizes - parameter
+- clear crossovers, gene conversions, ambiguous, complex
+- actual clear crossover: happens 70 to 100 bp away from ends
+
+# December 22nd
+- Instead of counting, figure out the base number that the start and end are at
+- midpoint method for self.simplify
+
+# December 4th
+- Update usage of filter.py, currently still says phase_change_Filter.py
+    - Probably gonna be obsolete after we make it into bash program
+- Do stuff noted in December 22nd
+- Look into setuptools to see if that's what we want to use for the command line program
