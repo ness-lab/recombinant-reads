@@ -616,8 +616,28 @@ pypy3 get-pip.py
 - Instead of counting, figure out the base number that the start and end are at
 - midpoint method for self.simplify
 
-# December 4th
+# January 4th
 - Update usage of filter.py, currently still says phase_change_Filter.py
     - Probably gonna be obsolete after we make it into bash program
 - Do stuff noted in December 22nd
 - Look into setuptools to see if that's what we want to use for the command line program
+
+# January 11th
+- [setuptools](https://packaging.python.org/tutorials/packaging-projects/)
+
+# January 18th
+- [setuptools entry points](https://setuptools.readthedocs.io/en/latest/userguide/entry_point.html?highlight=scripts)
+- [setuptools packages](https://setuptools.readthedocs.io/en/latest/userguide/package_discovery.html)
+- [setuptools config](https://setuptools.readthedocs.io/en/latest/userguide/declarative_config.html)
+- [old setup script](https://docs.python.org/3/distutils/setupscript.html)
+- [distutil examples](https://docs.python.org/3/distutils/examples.html)
+- Readcomb pacakge is working
+    - readcomb-filter --bam [bam] --vcf [vcf]
+    - readcomb-vcfprep --bam [bam] --vcf [vcf]
+    - in python: `import readcomb.classification` as rc or `from readcomb import classification`
+
+# January 21st
+- Create the build releases: `python3 setup.py sdist bdist_wheel`
+- Upload to pypi: `twine upload --repository-url https://upload.pypi.org/legacy/ dist/*`
+- Updating to pypi, create the new build then `twine upload dist/*`
+- Look at changing description-content-type to markdown
