@@ -640,4 +640,42 @@ pypy3 get-pip.py
 - Create the build releases: `python3 setup.py sdist bdist_wheel`
 - Upload to pypi: `twine upload --repository-url https://upload.pypi.org/legacy/ dist/*`
 - Updating to pypi, create the new build then `twine upload dist/*`
-- Look at changing description-content-type to markdown
+- Look at changing description-content-type to markdown - done
+
+# January 24th
+- Ask Ahmed about bamprep, is it done? Also does it need argument for samtools binary?
+- Currently pairs in classification cannot be passed in processes, maybe write pickle and unpickle functions?
+
+# January 25th
+- Change call to classify and then classify to call
+- Package and unpackage script for classification
+- Look for hardcoded stuff
+- There are sequences with no cigartuples, just skip those - already had this done nice
+cd ..
+# January 28th
+- try/except block in classification for from readcomb.filter, have warning and then import from local directory
+- power analysis: 1 - false negatives
+
+# February 1st
+- [Comparison of read simulation]https://www.nature.com/articles/nrg.2016.57)
+- [ART](https://www.niehs.nih.gov/research/resources/software/biostatistics/art/index.cfm)
+
+# February 4th
+- ART needs g++ and gsl `sudo apt-get install libgsl-dev`
+
+# February 8th
+- Random chance: numpy.random.choice [link](https://stackoverflow.com/questions/3679694/a-weighted-version-of-random-choice)
+- Dunno about to_dict, could just iterate through the one at a time
+- ART Illumina ask about:
+    - fold of read coverage -f --fcov
+    - insertion/deletion rate
+    - cigarM: seems to be the stuff in sam cigar numbers 7 and 8
+    - quality profile builder - seems useful
+- apt-get install art-nextgen-simulation-tools
+- raw fastq come from sequencing company, then bam/sams are sequences aligned to the reference sequence
+- use default miseq 250bp profile and use sequencing profile later
+- stick with cigarM
+- watch out for matepair vs paired, matepair is something where the space between two pairs that's >5000 bp and not what we're using
+- len is the length of the sequence, mflen is the mean size of both sequences in the pair plus the average space in the middle
+- f/fcov is just coverage, start with 20, final should be 400
+- stick to MSv1 for builtin reads

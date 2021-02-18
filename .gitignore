@@ -1,9 +1,4 @@
 .ipynb_checkpoints
 /data/liu-data
-analysis/jimmy/recomb_mock.bam
-recomb_diagnosis.txt
-analysis/jimmy/recomb_diagnosis.sam
-analysis/jimmy/test.sorted.bam
-analysis/jimmy/test.sorted.bam.bai
-analysis/jimmy/filtered_full.vcf.gz.tbi
-analysis/jimmy/filtered_full.vcf.gz
+/analysis/jimmy/power_analysis/output
+analysis/jimmy/data
