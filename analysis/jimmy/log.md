@@ -679,3 +679,11 @@ cd ..
 - len is the length of the sequence, mflen is the mean size of both sequences in the pair plus the average space in the middle
 - f/fcov is just coverage, start with 20, final should be 400
 - stick to MSv1 for builtin reads
+
+# February 18th
+- Include art_illumina command into analysis.py and include argparse to take arguements
+- Draft out a bash script
+
+# February 21st
+- vcf2fasta command `python2 vcf2fasta.py -v ../data/filtered_full.vcf.gz -r ../data/chlamy.5.3.w_organelles_mtMinus.fasta -i chromosome_1:1-1000000 > vcf2fasta.fasta`
+- art_illumina command `art_illumina -f 400 -M -p -sam -l 250 -ss MSv1 -i recomb_fasta -m 600 -s 1 -o generated_reads -na`
