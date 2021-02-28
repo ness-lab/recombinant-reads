@@ -687,3 +687,21 @@ cd ..
 # February 21st
 - vcf2fasta command `python2 vcf2fasta.py -v ../data/filtered_full.vcf.gz -r ../data/chlamy.5.3.w_organelles_mtMinus.fasta -i chromosome_1:1-1000000 > vcf2fasta.fasta`
 - art_illumina command `art_illumina -f 400 -M -p -sam -l 250 -ss MSv1 -i recomb_fasta -m 600 -s 1 -o generated_reads -na`
+
+# February 22nd
+- see if art can draw from multiple different fastas (poolseq) - automatic poolseq, sweet
+- run the analysis.py a few times and then readcomb on it to see what results we get
+    - set coverage to 1 and see how many phase changes we get
+- change analysis to add some arguements that art_illumina has
+- 9.15 cM/Mb - find out what this means: math on github repo
+
+# February 25th
+- -q, --quiet no end of run summary
+- test poolseq coverage with multiple sequences - see if it does it the same as sequencing biologically
+    - 1 read 1mil bases 1 coverage == multiple reads 1 mil bases each 1 coverage
+- report analysis results
+    - raw number of phase_change reads
+    - estimated rate of phase_changes
+- filtered data - make windows of 2000 shifting by 1000
+    - window_start, window_end, num_filterd, num_total
+- creating 400 vcf2fasta sequences and then storing the phase_changes in another csv file

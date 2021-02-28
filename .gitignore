@@ -1,4 +1,5 @@
 .ipynb_checkpoints
+__pycache__
 /data/liu-data
 /analysis/jimmy/power_analysis/output
 analysis/jimmy/data

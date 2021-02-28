@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
 import numpy.random as r
+import numpy as np
 import re
+import os
 import argparse
 import subprocess
 from Bio import SeqIO
@@ -21,10 +23,19 @@ def arg_parser():
                         type=int, help='1-based index start of read generation (default is 1)')
 
     parser.add_argument('-e', '--end', required=False, default=0,
-                        type=int, help='1-based index end of read generation (default is 0/all of chromosome)')
+                        type=int, help='1-based index end of read generation (default is 0/all of vcf2fasta fasta output)')
 
-    parser.add_argument('-p', '--percent', required=False, default=0.004,
-                        type=int, help='probability of phase change per base (default 0.004)')
+    parser.add_argument('-p', '--percent', required=False, default=9.15 * (10 ** -8),
+                        type=float, help='probability of phase change per base (default 9.15e-8)')
+
+    parser.add_argument('-c', '--coverage', required=False, default=1,
+                        type=int, help='read coverage of art_illumina (default 1)')
+
+    parser.add_argument('-i', '--insert', required=False, default=100,
+                        type=int, help='average insert size between paired reads (default 100)')
+
+    parser.add_argument('-o', '--output', required=False, default='generated_reads',
+                        type=str, help='prefix of art_illumina output (default generated_reads)')
 
     args = parser.parse_args()
 
@@ -32,7 +43,10 @@ def arg_parser():
         'fasta': args.fasta,
         'start': args.start,
         'end': args.end,
-        'percent': args.percent
+        'percent': args.percent,
+        'coverage': args.coverage,
+        'insert': args.insert,
+        'output': args.output,
     }
 
 def main():
@@ -47,7 +61,11 @@ def main():
         args['end'] = len(fasta_file[0].seq)
 
     events = r.poisson((args['end'] - args['start']) * args['percent'])
-    phase_changes = r.choice((args['end']- args['start']), size=events)
+    phase_changes = list(r.choice((args['end']- args['start']), size=events))
+
+    if os.path.exists('output/phase_change_log.txt'):
+        with open('output/phase_change_log.txt', 'a') as f:
+            f.write(str(sorted(phase_changes)))
 
     # regex to identify correct fasta reference_name
     chrom = re.search(r'chromosome_[0-9]{1,2}', str(fasta_file[0].id)).group()
@@ -81,19 +99,22 @@ def main():
         letter_annotations=fasta_file[0].letter_annotations
     )
 
-    SeqIO.write(recomb_record, 'recomb_fasta', 'fasta')
+    SeqIO.write(recomb_record, '.recomb_fasta', 'fasta')
 
     # art_illumina command
     subprocess.run(['art_illumina',
-                    '-f', '400',
+                    '-f', str(args['coverage']),
                     '-l', '250',
-                    '-ss', 'Msv1',
-                    '-i', 'recomb_fasta',
-                    '-m', '600',
+                    '-ss', 'MSv1',
+                    '-i', '.recomb_fasta',
+                    '-m', str(500 + args['insert']),
                     '-s', '1',
-                    '-o', 'generated_reads',
-                    '-M', '-p', '-sam', '-na'])
+                    '-o', args['output'],
+                    '-M', '-p', '-sam', '-na', '-q'])
 
+    # delete temp recomb_fasta file
+    if os.path.exists('.recomb_fasta'):
+        os.remove('.recomb_fasta')
     
 if __name__ == '__main__':
     main()
