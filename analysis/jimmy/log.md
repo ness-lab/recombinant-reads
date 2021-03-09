@@ -705,3 +705,23 @@ cd ..
 - filtered data - make windows of 2000 shifting by 1000
     - window_start, window_end, num_filterd, num_total
 - creating 400 vcf2fasta sequences and then storing the phase_changes in another csv file
+
+# March 1st
+- coverage 1: `run_id\t10000\t12000\t2\t10\t[11000, 11500]`
+- coverage 400: `run_id\t10000\t12000\t2\t10\t[sequence_id]`
+
+# March 3rd
+- write midpoint algorithm
+    - phase_change: half way between 1,2 or 2,1
+    - gene_conversion: half way between outer most 1,2,1 or 2,1,2
+    - no phase_change: half way between start and end
+- use midpoint to assign windows
+- don't really care about 1 sequence 1 converage
+
+# March 9th
+- ask ahmed to look into fasta file headers
+- remember to reimport modules or restart kernal everytime you make changes to something you import
+    - got stuck on this for like an hour
+- change condensed so that it finds midpoint at haplotype phase changes
+    - make changes to midpoint
+- \__str__ method for classification

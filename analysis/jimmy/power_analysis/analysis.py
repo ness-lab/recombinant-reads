@@ -65,7 +65,7 @@ def main():
 
     if os.path.exists('output/phase_change_log.txt'):
         with open('output/phase_change_log.txt', 'a') as f:
-            f.write(str(sorted(phase_changes)))
+            f.write('\n' + str(sorted(phase_changes)))
 
     # regex to identify correct fasta reference_name
     chrom = re.search(r'chromosome_[0-9]{1,2}', str(fasta_file[0].id)).group()
