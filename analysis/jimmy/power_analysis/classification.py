@@ -104,6 +104,30 @@ class Pair():
             self.rec_2 = record1
         
         self.vcf_filepath = vcf_filepath
+
+    def __str__(self):
+        if hasattr(self, 'call'):
+            string = f'Record name: {self.rec_1.query_name} \n' + \
+                    f'Read1: {self.rec_1.reference_name}:{self.rec_1.reference_start}' + \
+                    f'-{self.rec_1.reference_start + self.rec_1.query_alignment_length} \n' + \
+                    f'Read2: {self.rec_2.reference_name}:{self.rec_2.reference_start}' + \
+                    f'-{self.rec_2.reference_start + self.rec_2.query_alignment_length} \n' + \
+                    f'VCF: {self.vcf_filepath} \n' + \
+                    f'Unmatched Variant(s): {self.no_match} \n' + \
+                    f'Condensed: {self.condensed} \n' + \
+                    f'Call: {self.call} \n' + \
+                    f'Condensed Masked: {self.masked_condensed} \n' + \
+                    f'Call Masked: {self.masked_call} \n' + \
+                    f'Midpoint: {self.get_midpoint()}'
+        else:
+            string = f'Record name: {self.rec_1.query_name} \n' + \
+                    f'Read1: {self.rec_1.reference_name}:{self.rec_1.reference_start}' + \
+                    f'-{self.rec_1.reference_start + self.rec_1.query_alignment_length} \n' + \
+                    f'Read2: {self.rec_2.reference_name}:{self.rec_2.reference_start}' + \
+                    f'-{self.rec_2.reference_start + self.rec_2.query_alignment_length} \n' + \
+                    f'VCF: {self.vcf_filepath}'
+        
+        return string
     
     def package(self):
         '''
@@ -146,6 +170,9 @@ class Pair():
         self.detection_1 = downstream_phase_detection(self.variants_1, self.segment_1, self.rec_1)
         self.detection_2 = downstream_phase_detection(self.variants_2, self.segment_2, self.rec_2)
 
+        # set no_match variable if there are unmatched variants
+        self.no_match = True if 'N' in self.detection_1 or 'N' in self.detection_2 else False
+
         # simplification of results
         # [(haplotype, beginning, end), ...]
         self.condensed = []
@@ -156,12 +183,15 @@ class Pair():
 
             # first variant
             if len(self.condensed) == 0:
-                self.condensed.append([haplotype, self.rec_1.reference_start, None])
+                self.condensed.append([haplotype, self.rec_1.reference_start, self.rec_1.reference_start])
             
             # different haplotype
-            if self.condensed[-1][0] != haplotype:
-                self.condensed[-1][2] = location
-                self.condensed.append([haplotype, location, None]) 
+            elif self.condensed[-1][0] != haplotype:
+                # middle of previous variant location and current variant
+                # gonna round down so it's not a decimal
+                midpoint = int((self.condensed[-1][2] + location) // 2)
+                self.condensed[-1][2] = midpoint
+                self.condensed.append([haplotype, midpoint, midpoint]) 
             
             # last variant
             if len(self.detection_2) == 0:
@@ -171,13 +201,11 @@ class Pair():
                 if variant == self.detection_2[-1]:
                     self.condensed[-1][2] = self.rec_2.reference_start + self.rec_2.query_alignment_length
 
-        # create condensed
-        haplotypes = [tupl[0] for tupl in self.condensed]
+        # create list of just haplotype information no range from condensed
+        haplotypes = [tupl[0] for tupl in self.condensed if tupl[0] != 'N']
 
         # classify condensed
-        if 'N' in haplotypes:
-            self.call = 'no_match'
-        elif len(haplotypes) == 2:
+        if len(haplotypes) == 2:
             self.call = 'ambiguous_cross_over'
         elif len(haplotypes) == 3:
             self.call = 'gene_conversion'
@@ -198,31 +226,30 @@ class Pair():
         mask_start = self.rec_1.reference_start + masking
         mask_end = self.rec_2.reference_start + self.rec_2.query_alignment_length - masking
 
-        # created masked_condensed
+        # create masked_condensed from condensed
         # [(haplotype, beginning, end), ...]
         self.masked_condensed = []
 
         for phase in self.condensed:
             # one phase contains both mask start and end
             if phase[1] < mask_start and mask_end < phase[2]:
-                self.masked_condensed.append((phase[0], mask_start, mask_end))
+                self.masked_condensed.append([phase[0], mask_start, mask_end])
             # phase contains only mask start
             elif phase[1] < mask_start and mask_start < phase[2]:
-                self.masked_condensed.append((phase[0], mask_start, phase[2]))
+                self.masked_condensed.append([phase[0], mask_start, phase[2]])
             # phase contains only mask end
             elif phase[1] < mask_end and mask_end < phase[2]:
-                self.masked_condensed.append((phase[0], phase[1], mask_end))
+                self.masked_condensed.append([phase[0], phase[1], mask_end])
             # phase is in the middle
             elif mask_start < phase[1] and phase[2] < mask_end:
                 self.masked_condensed.append(phase)
                      
 
-        # classify masked_condensed
-        haplotypes = [tupl[0] for tupl in self.masked_condensed]
+        # create list of just haplotype information no range from condensed
+        haplotypes = [tupl[0] for tupl in self.masked_condensed if tupl[0] != 'N']
 
-        if 'N' in haplotypes:
-            self.masked_call = 'no_match'
-        elif len(haplotypes) == 2:
+        # classify masked_condensed
+        if len(haplotypes) == 2:
             self.masked_call = 'unambiguous_cross_over'
         elif len(haplotypes) == 3:
             self.masked_call = 'gene_conversion'
@@ -230,6 +257,21 @@ class Pair():
             self.masked_call = 'complex'
         else:
             self.masked_call = 'no_phase_change'
+
+        # convert haplotypes 1/2/N to VCF sample names
+        samples = vcf.samples
+
+        for tupl in self.condensed:
+            if tupl[0] == '1':
+                tupl[0] = samples[0]
+            elif tupl[0] == '2':
+                tupl[0] = samples[1]
+
+        for tupl in self.masked_condensed:
+            if tupl[0] == '1':
+                tupl[0] = samples[0]
+            elif tupl[0] == '2':
+                tupl[0] = samples[1]
 
     def get_midpoint(self):
         '''
@@ -254,13 +296,18 @@ class Pair():
         # [(haplotype, beginning, end), ...]
 
         if self.call == 'no_phase_change':
+            # midpoint is middle of two paired reads if no phase change
             start = self.rec_1.reference_start
             end = self.rec_2.reference_start + self.rec_2.query_alignment_length
             self.midpoint = int((start + end) / 2)
+        elif self.call == 'phase_change':
+            # (X, begin, end), (Y, begin, end): end of X = beginning of Y = midpoint
+            self.midpoint = self.condensed[0][2]
         else:
+            # kind of a shortcut using midpoints to find the middle
             start = self.condensed[0][2]
             end = self.condensed[-1][1]
-            self.midpoint = int((start + end) / 2)
+            self.midpoint = (start + end) / 2
 
         return self.midpoint
 
@@ -272,6 +319,10 @@ def pairs_creation(bam_filepath, vcf_filepath):
     pairs = []
     prev_rec = None
     for rec in bam:
+        # check if record is in a proper pair
+        if not rec.is_proper_pair or rec.is_secondary or rec.is_supplementary:
+            raise ValueError('Preprocessing of bam file went wrong')
+
         # first record
         if not prev_rec:
             prev_rec = rec
@@ -279,5 +330,23 @@ def pairs_creation(bam_filepath, vcf_filepath):
         elif rec.query_name == prev_rec.query_name:
             pairs.append(Pair(rec, prev_rec, vcf_filepath))
             prev_rec = None
+        else:
+            raise ValueError('Preprocessing of bam file went wrong')
 
     return pairs
+
+# testing
+
+if __name__ == '__main__':
+    pairs = pairs_creation('analysis/jimmy/power_analysis/output/filtered1.sam',
+                            'analysis/jimmy/data/filtered_full.vcf.gz')
+
+    print(pairs[0])
+    print(pairs[0].get_midpoint())
+    print(pairs[0])
+
+    print(pairs[1].get_midpoint())
+    print(pairs[1])
+
+    print(pairs[2].get_midpoint())
+    print(pairs[2])
