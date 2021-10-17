@@ -725,3 +725,58 @@ cd ..
 - change condensed so that it finds midpoint at haplotype phase changes
     - make changes to midpoint
 - \__str__ method for classification
+
+# March 10th
+- rounding down for midpoint calculation, check with ahmed if we should instead do decimal
+- do not use too many vcf objects (>40000) and cyvcf2 breaks
+- gotta be careful - if i generate sequences for 1 mil to 1.1 mil, then generate the fasta sequences, readcomb and art are not able to recognize that these sequences are not starting from 1 and readcomb will break
+
+# March 18th
+- Looking at no matches -> change into a variable instead of part of classify - done
+- Update documentation - done
+- Update docstrings using this [format](https://pandas.pydata.org/docs/development/contributing_docstring.html)
+
+# March 22nd
+- look at pytest for unit tests
+- print help message when there are no arguements [link](https://stackoverflow.com/questions/4042452/display-help-message-with-python-argparse-when-script-is-called-without-any-argu)
+- instead of passing back arguements, pass back the parser object
+
+# March 25th
+- when you get args from `parser.parse_args()`, it's a Namespace object and you can add to it by using the dot format
+    - implemented but not tested yet
+
+# March 26th
+- Make stub class for argparse, override error
+- vcfprep inconsistent arguement behavior
+
+# March 27th
+- Look at [pytest](https://docs.pytest.org/en/stable/getting-started.html)
+
+# March 31st
+- write basic tests 
+
+# April 5th
+- use list comp that saves locations of variants and check types of variants
+
+# April 12th
+- phase change detection - if phred score at that score is too low then ignore that site
+- Report length of gene conversion, not complex or crossover
+- Redo final call
+- average number of variants per haplotypes -> variant supporting haplotypes
+
+# April 20th
+- Look at cufflinks estimation method
+
+# April 22nd
+- Mapped and assembled different fractions of the fragments
+- look at list index out of range for classify
+- TABIX INDEXING IS RIGHT BOUND INCLUSIVE HOLY CRAP
+- log into server: create 600 sequences, 400kb
+- write out the new classification flowchart
+
+# April 26th
+- Revert to previous calls of masked and unmasked calls
+- Think about other data points that we can use
+
+# April 28th
+- Organize and push the rest of the info on recombinant reads
